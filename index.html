@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f3d2e">
+<link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png">
+<title>Easy POS</title>
+<style>
+:root{--g:#0f3d2e;--y:#ffd100;--p:#ff4fa3;--bg:#f7f5ea}
+*{box-sizing:border-box;font-family:system-ui,-apple-system,Roboto,sans-serif}
+body{margin:0;height:100vh;display:flex;flex-direction:column;background:var(--bg);color:#12281f;font-size:20px}
+button{font-size:20px;border:0;border-radius:14px;min-height:56px;padding:0 18px;cursor:pointer;background:#e4e8d8;color:var(--g);font-weight:600}
+button:active{transform:scale(.97)}
+input,select{font-size:22px;padding:12px;border:2px solid #b9c4ae;border-radius:12px;width:100%;background:#fff;margin:4px 0 10px}
+label{font-weight:600;display:block;margin-top:6px}.chk{display:flex;align-items:center;gap:10px}.chk input{width:28px;height:28px;margin:0}
+#nav{display:flex;gap:8px;padding:10px;background:var(--g)}
+#nav button{background:transparent;color:#fff;flex:1}#nav .on{background:var(--y);color:var(--g)}
+#nav .pr{background:var(--p);color:#fff;flex:1.4}#nav .pr.ok{background:#2e9e6e}
+#main{flex:1;overflow:auto}
+.ord{display:flex;height:100%}.menu{flex:1;display:flex;flex-direction:column;min-width:0}
+.cats{display:flex;gap:8px;padding:10px;overflow-x:auto;flex-shrink:0}.cats button{white-space:nowrap}
+.cats .on,.days .on{background:var(--g);color:var(--y)}
+.grid{flex:1;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;padding:10px;align-content:start}
+.tile{height:120px;background:#fff;border:3px solid var(--g);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.tile span{color:var(--p);font-size:24px}.tile small{color:#777;min-height:18px}.tile:disabled{opacity:.4}
+.cart{width:380px;background:#fff;border-left:4px solid var(--g);display:flex;flex-direction:column;padding:12px 12px 112px}
+.lines{flex:1;overflow:auto}
+.ln{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #e3e3d6}
+.ln>:first-child{flex:1}.q{display:flex;align-items:center;gap:8px}.q button{min-height:46px;padding:0 16px;background:var(--y)}
+.tot{display:flex;justify-content:space-between;font-size:28px;padding:8px 0}
+.clr{background:none;text-decoration:underline;min-height:40px}
+#pay{position:fixed;right:16px;bottom:16px;width:348px;height:84px;background:var(--p);color:#fff;font-size:28px;box-shadow:0 4px 14px #0005;z-index:5}
+.pg{padding:16px;max-width:900px;margin:auto}h2{color:var(--g)}h3{color:var(--g);border-bottom:3px solid var(--y);padding-bottom:4px}
+.go{background:var(--g);color:var(--y);width:100%;margin:6px 0;min-height:64px}.gh{background:#e4e8d8;width:100%;margin:6px 0}
+.b2{background:var(--y);flex:1;min-height:64px}.row{display:flex;gap:10px;margin:8px 0}.s{min-height:44px;font-size:17px}.d{background:var(--p);color:#fff}
+.big{font-size:30px;font-weight:700}.pk{color:var(--p)}.mut{color:#777}.warn{background:var(--y);padding:12px;border-radius:12px;font-weight:700;margin:8px 0}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:10px 0}
+.card{background:var(--g);color:#fff;border-radius:16px;padding:14px;display:flex;flex-direction:column}.card b{font-size:28px;color:var(--y)}
+.bar{position:relative;display:flex;justify-content:space-between;padding:10px;margin:4px 0;background:#fff;border-radius:10px;overflow:hidden}
+.bar div{position:absolute;left:0;top:0;bottom:0;background:#ffe97a}.bar span,.bar b{position:relative}
+.log{display:flex;height:100%}.days{width:250px;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px;border-right:3px solid var(--g)}
+.days button{display:flex;flex-direction:column;align-items:flex-start;padding:8px 12px;min-height:64px}.days span{font-size:16px;font-weight:400}.log .pg{flex:1;overflow:auto;margin:0;max-width:none}
+.ord1{background:#fff;border-radius:12px;padding:12px;margin:8px 0}.mi b{flex:1}
+#m{display:none;position:fixed;inset:0;background:#000a;align-items:center;justify-content:center;z-index:10;padding:16px}
+.box{background:var(--bg);border-radius:20px;padding:20px;width:100%;max-width:520px;max-height:94vh;overflow:auto;border-top:10px solid var(--p)}
+#t{position:fixed;left:50%;top:80px;transform:translateX(-50%);background:var(--g);color:var(--y);padding:14px 22px;border-radius:30px;opacity:0;pointer-events:none;transition:opacity .3s;z-index:20;font-weight:600}
+@media(max-width:800px){.cart{width:300px}#pay{width:268px}.days{width:170px}}
+</style></head><body>
+<div id="nav"></div><div id="main"></div>
+<button id="pay">TAKE PAYMENT</button><div id="m"></div><div id="t"></div>
+<script>
+const $=s=>document.querySelector(s),LS=localStorage;
+let D=JSON.parse(LS.pos||'null')||{menu:[{id:1,name:'Coffee',cat:'Drinks',price:4.5,stock:null},{id:2,name:'Sandwich',cat:'Food',price:9,stock:20},{id:3,name:'Tea',cat:'Drinks',price:4,stock:null}],orders:[],set:{shop:'My Shop',w:32},nid:10};
+const save=()=>LS.pos=JSON.stringify(D),M=n=>'$'+(+n).toFixed(2),r2=n=>Math.round(n*100)/100,
+dk=t=>new Date(t).toLocaleDateString('en-CA'),oid=id=>D.orders.find(o=>o.id==id),
+esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),
+hm=t=>new Date(t).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),hl=h=>(h%12||12)+(h<12?'am':'pm');
+let tab='order',cat='',cart={},label='',repK='d',repD=dk(Date.now()),logD=dk(Date.now()),cur={},pays=[],dev=null,ch=null;
+const modal=h=>{$('#m').innerHTML='<div class="box">'+h+'</div>';$('#m').style.display='flex'},closeM=()=>$('#m').style.display='none';
+function toast(t){const e=$('#t');e.textContent=t;e.style.opacity=1;clearTimeout(toast.i);toast.i=setTimeout(()=>e.style.opacity=0,3000)}
+function go(t){tab=t;render()}
+function render(){
+ $('#nav').innerHTML=[['order','Order'],['log','Daily Log'],['rep','Reports'],['menu','Menu']].map(([k,n])=>`<button class="${tab==k?'on':''}" onclick="go('${k}')">${n}</button>`).join('')+`<button class="pr ${ch?'ok':''}" onclick="printerUI()">🖨 ${ch?'Printer ready':'Connect Printer'}</button>`;
+ $('#main').innerHTML=({order:vOrder,log:vLog,rep:vRep,menu:vMenu})[tab]();
+ $('#pay').style.display=tab=='order'?'block':'none'}
+/* ---------- ORDER ---------- */
+const cartTotal=()=>r2(Object.entries(cart).reduce((s,[id,q])=>s+D.menu.find(i=>i.id==id).price*q,0));
+function vOrder(){
+ const cats=[...new Set(D.menu.map(i=>i.cat))].sort();if(!cats.includes(cat))cat=cats[0]||'';
+ const items=D.menu.filter(i=>i.cat==cat).sort((a,b)=>a.name.localeCompare(b.name)),
+ ls=Object.entries(cart).map(([id,q])=>[D.menu.find(i=>i.id==id),q]);
+ return `<div class="ord"><div class="menu"><div class="cats">${cats.map(c=>`<button class="${c==cat?'on':''}" data-c="${esc(c)}" onclick="cat=this.dataset.c;render()">${esc(c)}</button>`).join('')}</div>
+ <div class="grid">${items.map(i=>{const out=i.stock!=null&&i.stock<=0;return `<button class="tile" ${out?'disabled':''} onclick="chg(${i.id},1)"><b>${esc(i.name)}</b><span>${M(i.price)}</span><small>${out?'OUT OF STOCK':i.stock!=null?i.stock+' left':''}</small></button>`}).join('')||'<p style="padding:10px">No items yet. Tap <b>Menu</b> to add some.</p>'}</div></div>
+ <div class="cart"><input id="lb" placeholder="Order # or name (optional)" value="${esc(label)}" oninput="label=this.value">
+ <div class="lines">${ls.map(([i,q])=>`<div class="ln"><span>${esc(i.name)}</span><span class="q"><button onclick="chg(${i.id},-1)">−</button><b>${q}</b><button onclick="chg(${i.id},1)">+</button></span><span>${M(i.price*q)}</span></div>`).join('')||'<p class="mut">Tap items to add them</p>'}</div>
+ ${ls.length?'<button class="clr" onclick="cart={};render()">Clear order</button>':''}<div class="tot">Total <b>${M(cartTotal())}</b></div></div></div>`}
+function chg(id,d){const i=D.menu.find(x=>x.id==id),q=(cart[id]||0)+d;
+ if(i.stock!=null&&q>i.stock)return toast('Only '+i.stock+' '+i.name+' left');
+ if(q<=0)delete cart[id];else cart[id]=q;render()}
+/* ---------- PAYMENT ---------- */
+function pay(){if(!Object.keys(cart).length)return toast('Add items to the order first');pays=[];payUI()}
+function payUI(){
+ const t=cartTotal(),rem=r2(t-pays.reduce((s,p)=>s+p.a,0));
+ modal(`<h2>Take Payment</h2><div class="big">Total ${M(t)}</div>
+ ${pays.map((p,i)=>`<div class="ln"><span>${p.m}</span><b>${M(p.a)}</b><button class="s d" onclick="pays.splice(${i},1);payUI()">Undo</button></div>`).join('')}
+ ${rem>0?`<div class="big pk">Still to pay: ${M(rem)}</div><label>Amount paying now</label><input id="amt" type="number" step="0.01" inputmode="decimal" value="${rem.toFixed(2)}">
+ <div class="row">${['Cash','Card','Other'].map(m=>`<button class="b2" onclick="addPay('${m}',${rem})">${m}</button>`).join('')}</div>
+ <p class="mut">Splitting? Change the amount, tap how they paid, then do the rest.</p>`:`<button class="go" onclick="finish()">✔ Finish Order</button>`}
+ <button class="gh" onclick="closeM()">Cancel</button>`)}
+function addPay(m,rem){const a=r2(parseFloat($('#amt').value));if(!(a>0))return toast('Enter an amount');pays.push({m,a:Math.min(a,rem)});payUI()}
+function finish(){
+ const now=Date.now(),seq=D.orders.filter(o=>dk(o.ts)==dk(now)).length+1,
+ items=Object.entries(cart).map(([id,q])=>{const i=D.menu.find(x=>x.id==id);if(i.stock!=null)i.stock-=q;return{id:i.id,n:i.name,p:i.price,q}}),
+ o={id:D.nid++,ts:now,seq,label:label.trim(),items,total:cartTotal(),pays};
+ D.orders.push(o);save();
+ const out=items.map(x=>D.menu.find(i=>i.id==x.id)).filter(i=>i.stock!=null&&i.stock<=0);
+ cart={};label='';printLines(slip(o.id));render();
+ modal(`<h2>Order ${esc(o.label||'#'+o.seq)} done ✔</h2>${out.length?`<div class="warn">⚠ OUT OF STOCK: ${out.map(i=>esc(i.name)).join(', ')}</div>`:''}
+ <p>Print a receipt for the customer?</p><button class="go" onclick="printLines(receipt(${o.id}));closeM()">Yes, print receipt</button><button class="gh" onclick="closeM()">No thanks</button>`)}
+/* ---------- PRINTING (ESC/POS over Bluetooth LE) ---------- */
+const W=()=>D.set.w,E=new TextEncoder(),pad=(a,b)=>a.slice(0,W()-b.length-1).padEnd(W()-b.length)+b,hr=()=>['-'.repeat(W()),0],
+ref=o=>o.label||'#'+o.seq;/* flags: 1 centre, 2 bold, 4 double size */
+function slip(id){const o=oid(id);return[['** KITCHEN ORDER **',3],['ORDER '+ref(o),7],[hm(o.ts)+'  '+new Date(o.ts).toLocaleDateString(),1],hr(),...o.items.map(i=>[i.q+' x '+i.n,6]),hr()]}
+function receipt(id){const o=oid(id);return[[D.set.shop,7],['Receipt '+ref(o),1],[new Date(o.ts).toLocaleString(),1],hr(),...o.items.map(i=>[pad(i.q+' x '+i.n,M(i.p*i.q)),0]),hr(),[pad('TOTAL',M(o.total)),2],...o.pays.map(p=>[pad('Paid '+p.m,M(p.a)),0]),['',0],['Thank you!',1]]}
+function repLines(os,t){const a=agg(os);return[[D.set.shop,7],[t,1],hr(),[pad('Orders',''+a.n),0],[pad('TOTAL SALES',M(a.t)),2],[pad('Average order',M(a.avg)),0],hr(),['PAYMENTS',2],...Object.entries(a.p).map(([k,v])=>[pad(k,M(v)),0]),hr(),['ITEMS SOLD',2],...a.items.map(([n,v])=>[pad(v.q+' x '+n,M(v.r)),0])]}
+function wrap(t,w){const r=[];t=String(t);do{r.push(t.slice(0,w));t=t.slice(w)}while(t.length);return r}
+function doc(ls){const o=[27,64],w=W();for(const[t,f]of ls){const d=f&4;for(const s of wrap(t,d?w>>1:w))o.push(27,97,f&1?1:0,27,69,f&2?1:0,29,33,d?17:0,...E.encode(s.replace(/[^\x20-\x7e]/g,'?')+'\n'))}o.push(27,97,0,27,69,0,29,33,0,10,10,10,29,86,66,0);return new Uint8Array(o)}
+const SV=[0xffe0,0xff00,0xfee7,0xae30,0x18f0,0xffe5,0xfff0,'e7810a71-73ae-499d-8c15-faa9aef0c3f2','49535343-fe7d-4ae5-8fa9-9fafd205e455'];
+async function link(){ch=null;const s=await dev.gatt.connect();
+ for(const v of await s.getPrimaryServices()){for(const c of await v.getCharacteristics())if(c.properties.write||c.properties.writeWithoutResponse){ch=c;break};if(ch)break}
+ if(!ch)throw Error('This printer is not compatible')}
+async function connectP(){closeM();try{dev=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:SV});await link();toast('Printer connected ✔')}catch(e){ch=null;toast('Could not connect: '+e.message)}render()}
+async function printLines(ls){
+ if(!dev)return toast('Printer not connected. Tap "Connect Printer".');
+ try{if(!dev.gatt.connected||!ch)await link();const b=doc(ls);
+  for(let i=0;i<b.length;i+=100){const c=b.slice(i,i+100);await(ch.properties.writeWithoutResponse?ch.writeValueWithoutResponse(c):ch.writeValue(c));await new Promise(r=>setTimeout(r,40))}
+ }catch(e){ch=null;render();toast('Printer problem. Switch it on, then tap Connect Printer.')}}
+function printerUI(){modal(`<h2>Printer</h2><p>${ch?'Connected to <b>'+esc(dev.name||'printer')+'</b> ✔':'Not connected. Switch the printer on, then tap below.'}</p>
+ <button class="go" onclick="connectP()">${ch?'Connect a different printer':'Find & connect printer'}</button>
+ <button class="b2" style="width:100%" onclick="printLines([['TEST PRINT',7],['Printer is working!',1]]);closeM()">Print test page</button><button class="gh" onclick="closeM()">Close</button>`)}
+/* ---------- REPORTS ---------- */
+function agg(os){const m={},p={},h={},days={};let t=0;
+ os.forEach(o=>{t+=o.total;days[dk(o.ts)]=(days[dk(o.ts)]||0)+o.total;const x=new Date(o.ts).getHours();h[x]=(h[x]||0)+1;
+  o.pays.forEach(y=>p[y.m]=(p[y.m]||0)+y.a);o.items.forEach(i=>{m[i.n]=m[i.n]||{q:0,r:0};m[i.n].q+=i.q;m[i.n].r+=i.p*i.q})});
+ return{n:os.length,t:r2(t),avg:os.length?t/os.length:0,p,h,days,items:Object.entries(m).sort((a,b)=>b[1].q-a[1].q)}}
+function repHTML(os){const a=agg(os),bh=Object.entries(a.h).sort((x,y)=>y[1]-x[1])[0],dl=Object.entries(a.days).sort((x,y)=>y[1]-x[1]),mx=a.items[0]?a.items[0][1].q:1;
+ return `<div class="cards"><div class="card">Total sales<b>${M(a.t)}</b></div><div class="card">Orders<b>${a.n}</b></div><div class="card">Average order<b>${M(a.avg)}</b></div>
+ ${bh?`<div class="card">Busiest hour<b>${hl(+bh[0])}</b></div>`:''}${dl.length>1?`<div class="card">Average per day<b>${M(a.t/dl.length)}</b></div><div class="card">Best day<b>${new Date(dl[0][0]+'T00:00').toLocaleDateString([],{day:'numeric',month:'short'})}</b>${M(dl[0][1])}</div>`:''}</div>
+ <h3>Payments taken</h3>${Object.entries(a.p).map(([k,v])=>`<div class="ln"><span>${k}</span><b>${M(v)}</b></div>`).join('')||'<p class="mut">No sales</p>'}
+ <h3>Items sold (best sellers first)</h3>${a.items.map(([n,v])=>`<div class="bar"><div style="width:${v.q/mx*100}%"></div><span>${v.q} × ${esc(n)}</span><b>${M(v.r)}</b></div>`).join('')||'<p class="mut">No sales</p>'}`}
+function rng(k,d){const n=new Date(),y=n.getFullYear(),m=n.getMonth(),dd=n.getDate(),wd=(n.getDay()+6)%7,o=k[0]=='l'?1:0;let s,e,t;
+ if(k=='d'){s=new Date(d+'T00:00');e=new Date(s);e.setDate(e.getDate()+1);t=s.toDateString()}
+ else if(k[1]=='w'){s=new Date(y,m,dd-wd-7*o);e=new Date(y,m,dd-wd-7*o+7);t='Week from '+s.toDateString()}
+ else if(k[1]=='m'){s=new Date(y,m-o,1);e=new Date(y,m-o+1,1);t=s.toLocaleString([],{month:'long',year:'numeric'})}
+ else{s=new Date(y-o,0,1);e=new Date(y-o+1,0,1);t='Year '+(y-o)}
+ return{os:D.orders.filter(x=>x.ts>=s&&x.ts<e),t}}
+const actions=l=>`<div class="row"><button class="b2" onclick="printLines(repLines(cur.os,cur.t))">🖨 ${l}</button><button class="b2" onclick="share()">📤 Share</button></div>`;
+function share(){const tx=repLines(cur.os,cur.t).map(l=>l[0]).join('\n');navigator.share?navigator.share({title:cur.t,text:tx}).catch(()=>{}):navigator.clipboard.writeText(tx).then(()=>toast('Report copied'))}
+function vRep(){const r=rng(repK,repD);cur=r;
+ return `<div class="pg"><div class="cats">${[['d','Day'],['tw','This Week'],['lw','Last Week'],['tm','This Month'],['lm','Last Month'],['ty','This Year'],['ly','Last Year']].map(([k,n])=>`<button class="${repK==k?'on':''}" onclick="repK='${k}';render()">${n}</button>`).join('')}</div>
+ ${repK=='d'?`<label>Pick a date</label><input type="date" value="${repD}" onchange="repD=this.value||repD;render()">`:''}<h2>${r.t}</h2>${repHTML(r.os)}${actions('Print')}</div>`}
+/* ---------- DAILY LOG ---------- */
+function vLog(){const days={};D.orders.forEach(o=>(days[dk(o.ts)]=days[dk(o.ts)]||[]).push(o));const ks=Object.keys(days).sort().reverse();
+ if(!days[logD])logD=ks[0]||logD;const os=days[logD]||[];cur={os,t:new Date(logD+'T00:00').toDateString()};
+ return `<div class="log"><div class="days">${ks.map(k=>`<button class="${k==logD?'on':''}" onclick="logD='${k}';render()"><b>${new Date(k+'T00:00').toLocaleDateString([],{weekday:'short',day:'numeric',month:'short'})}</b><span>${days[k].length} orders, ${M(days[k].reduce((s,o)=>s+o.total,0))}</span></button>`).join('')||'<p>No sales yet.</p>'}</div>
+ <div class="pg"><h2>${cur.t}</h2>${repHTML(os)}${os.length?actions('Print end-of-day report'):''}<h3>Orders</h3>
+ ${os.slice().reverse().map(o=>`<div class="ord1"><b>${hm(o.ts)} · ${esc(ref(o))} · ${M(o.total)}</b><br>${o.items.map(i=>i.q+' × '+esc(i.n)).join(', ')}<br><small>${o.pays.map(p=>p.m+' '+M(p.a)).join(' + ')}</small>
+ <div class="row"><button class="s" onclick="printLines(slip(${o.id}))">Print slip</button><button class="s" onclick="printLines(receipt(${o.id}))">Print receipt</button><button class="s d" onclick="delO(${o.id})">Delete</button></div></div>`).join('')}</div></div>`}
+function delO(id){modal(`<h2>Delete this order?</h2><p>Stock will be put back.</p><button class="go" onclick="doDel(${id})">Yes, delete it</button><button class="gh" onclick="closeM()">Keep it</button>`)}
+function doDel(id){oid(id).items.forEach(i=>{const m=D.menu.find(x=>x.id==i.id);if(m&&m.stock!=null)m.stock+=i.q});D.orders=D.orders.filter(x=>x.id!=id);save();closeM();render()}
+/* ---------- MENU ---------- */
+function vMenu(){const cs=[...new Set(D.menu.map(i=>i.cat))].sort();
+ return `<div class="pg"><button class="go" onclick="edit(0)">＋ Add menu item</button>
+ ${cs.map(c=>`<h3>${esc(c)}</h3>${D.menu.filter(i=>i.cat==c).sort((a,b)=>a.name.localeCompare(b.name)).map(i=>`<div class="ln mi"><b>${esc(i.name)}</b><span>${M(i.price)}</span><span>${i.stock==null?'Unlimited':i.stock+' in stock'}</span><button class="s" onclick="edit(${i.id})">Edit</button></div>`).join('')}`).join('')}
+ <h3>Settings</h3><label>Shop name (shown on receipts)</label><input value="${esc(D.set.shop)}" onchange="D.set.shop=this.value;save()">
+ <label>Printer paper width</label><select onchange="D.set.w=+this.value;save()"><option value="32" ${W()==32?'selected':''}>58mm (small)</option><option value="48" ${W()==48?'selected':''}>80mm (wide)</option></select>
+ <div class="row"><button class="b2" onclick="backup()">Save backup file</button><button class="b2" onclick="$('#rf').click()">Restore backup</button></div><input id="rf" type="file" hidden accept=".json" onchange="restore(this)"></div>`}
+function edit(id){const i=D.menu.find(x=>x.id==id)||{name:'',cat:'',price:'',stock:null};
+ modal(`<h2>${id?'Edit':'Add'} item</h2><label>Name</label><input id="en" value="${esc(i.name)}"><label>Category (e.g. Drinks)</label><input id="ec" list="cl" value="${esc(i.cat)}">
+ <datalist id="cl">${[...new Set(D.menu.map(x=>x.cat))].map(c=>`<option value="${esc(c)}">`).join('')}</datalist><label>Price</label><input id="ep" type="number" step="0.01" inputmode="decimal" value="${i.price}">
+ <label class="chk"><input id="eu" type="checkbox" ${i.stock==null?'checked':''} onchange="$('#es').disabled=this.checked"> Unlimited stock</label><label>Stock count</label><input id="es" type="number" inputmode="numeric" value="${i.stock??''}" ${i.stock==null?'disabled':''}>
+ <button class="go" onclick="saveI(${id})">Save</button><button class="gh" onclick="closeM()">Cancel</button>${id?`<button class="s d" onclick="delI(${id})">Delete this item</button>`:''}`)}
+function saveI(id){const n=$('#en').value.trim(),p=parseFloat($('#ep').value),s=parseInt($('#es').value);
+ if(!n||isNaN(p))return toast('Please enter a name and a price');
+ const v={name:n,cat:$('#ec').value.trim()||'Other',price:p,stock:$('#eu').checked?null:(isNaN(s)?0:s)};
+ if(id)Object.assign(D.menu.find(x=>x.id==id),v);else D.menu.push({id:D.nid++,...v});save();closeM();render()}
+function delI(id){if(!confirm('Delete this item?'))return;D.menu=D.menu.filter(x=>x.id!=id);delete cart[id];save();closeM();render()}
+function backup(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(D)]));a.download='pos-backup-'+dk(Date.now())+'.json';a.click()}
+function restore(f){f.files[0].text().then(t=>{D=JSON.parse(t);save();render();toast('Backup restored')}).catch(()=>toast('That file did not work'))}
+$('#pay').onclick=pay;render();
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
+</script></body></html>
